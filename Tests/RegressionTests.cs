@@ -54,6 +54,7 @@ namespace XeniaSettings.Tests
                     TestPatchTextPreservation(new UTF8Encoding(true), "\r\n", "utf8-bom");
                     TestPatchTextPreservation(new UnicodeEncoding(false, true), "\r\n", "utf16");
                     TestInlinePatchEditing();
+                    TestSaveStateAndShortcuts();
                     if (args.Length > 0) TestCorpus(args[0]);
                     Console.WriteLine("PASS: " + _checks + " checks.");
                     return 0;

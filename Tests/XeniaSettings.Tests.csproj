@@ -23,6 +23,7 @@
     <Compile Include="ConfigRegressionTests.cs" />
     <Compile Include="RefactoringRegressionTests.cs" />
     <Compile Include="PatchEditingRegressionTests.cs" />
+    <Compile Include="SaveStateRegressionTests.cs" />
     <ProjectReference Include="..\XeniaSettings\XeniaSettings.csproj">
       <Project>{61D9D6EF-71BE-4BBC-B39F-296C1B93B8B0}</Project>
       <Name>XeniaSettings</Name>

@@ -328,6 +328,7 @@ namespace XeniaSettings
             this.numericValueInput.TabIndex = 2;
             this.numericValueInput.Visible = false;
             this.numericValueInput.ValueChanged += new System.EventHandler(this.configValueInput_Changed);
+            this.numericValueInput.TextChanged += new System.EventHandler(this.numericValueInput_TextChanged);
             // 
             // label1
             // 

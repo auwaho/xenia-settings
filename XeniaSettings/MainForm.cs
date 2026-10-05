@@ -19,6 +19,7 @@ namespace XeniaSettings
         private ConfigValueKind _configValueKind;
         private char _configStringQuote;
         private bool _configNumberIsFloat;
+        private string _committedNumericText = string.Empty;
         private List<PatchFile> _patchFiles = new List<PatchFile>();
         private bool _loadingPatches;
         private bool _loadingPatchDescription;
@@ -31,6 +32,33 @@ namespace XeniaSettings
 
             ReloadConfig(false);
             ReloadPatches();
+        }
+
+        private void UpdateWindowTitle()
+        {
+            bool changed = _config?.IsModified == true
+                || (_configValueKind == ConfigValueKind.Number && configTreeView.SelectedNode?.Tag is Setting
+                    && numericValueInput.Text != _committedNumericText)
+                || _patchEdits.Any(edit => edit.Value.Replace("\r\n", "\n")
+                    != RemoveCommonIndentation(edit.Key.Description).Replace("\r\n", "\n"))
+                || _patchFiles.Any(file => file.IsModified);
+            Text = changed ? "Xenia Settings - Unsaved changes" : "Xenia Settings";
+        }
+
+        protected override bool ProcessCmdKey(ref Message message, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.S))
+            {
+                if (tabControl1.SelectedTab == tabPage1) saveConfigToolStripMenuItem.PerformClick();
+                else if (tabControl1.SelectedTab == tabPage2) savePatchesToolStripMenuItem.PerformClick();
+                return true;
+            }
+            return base.ProcessCmdKey(ref message, keyData);
+        }
+
+        private void numericValueInput_TextChanged(object sender, EventArgs e)
+        {
+            if (!_loadingConfigValue) UpdateWindowTitle();
         }
 
         private void ReloadSettingsTreeView()
@@ -101,6 +129,7 @@ namespace XeniaSettings
             _config = loaded;
             SetConfigControlsEnabled(true);
             ReloadSettingsTreeView();
+            UpdateWindowTitle();
         }
 
         private void SetConfigControlsEnabled(bool enabled)
@@ -124,6 +153,7 @@ namespace XeniaSettings
             if (_configValueKind == ConfigValueKind.Number) numericValueInput.Value = numericValueInput.Value;
             string error;
             if (!ConfigHelper.TrySaveConfig(_config, out error)) ShowConfigError(error, "Could not save config");
+            UpdateWindowTitle();
         }
 
         private void configTreeView_AfterSelect(object sender, TreeViewEventArgs e)
@@ -166,7 +196,12 @@ namespace XeniaSettings
                     if (setting == null) valueTextBox.Clear();
                 }
             }
-            finally { _loadingConfigValue = false; }
+            finally
+            {
+                _committedNumericText = numericValueInput.Text;
+                _loadingConfigValue = false;
+            }
+            UpdateWindowTitle();
         }
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
@@ -210,6 +245,7 @@ namespace XeniaSettings
                 _loadingPatches = false;
             }
             if (tabControl1.SelectedTab == tabPage2) ShowPatchDescription();
+            UpdateWindowTitle();
             ShowPatchErrors(errors, "Some patch files could not be loaded");
         }
 
@@ -228,12 +264,17 @@ namespace XeniaSettings
         {
             foreach (TreeNode game in patchesTreeView.Nodes)
                 foreach (TreeNode node in game.Nodes)
-                    if (!TryApplyPatchEdit(node)) return;
+                    if (!TryApplyPatchEdit(node))
+                    {
+                        UpdateWindowTitle();
+                        return;
+                    }
 
             List<string> errors = PatchHelper.SavePatches(_patchFiles);
             ShowPatchErrors(errors, "Some patch files could not be saved");
             if (errors.Count == 0) _editingPatch = null;
             ShowPatchDescription();
+            UpdateWindowTitle();
         }
 
         private void ShowPatchDescription()
@@ -305,7 +346,10 @@ namespace XeniaSettings
         private void patchDescRichTextBox_TextChanged(object sender, EventArgs e)
         {
             if (!_loadingPatchDescription && _editingPatch != null)
+            {
                 _patchEdits[_editingPatch] = patchDescRichTextBox.Text;
+                UpdateWindowTitle();
+            }
         }
 
         private bool TryApplyPatchEdit(TreeNode node)
@@ -361,6 +405,7 @@ namespace XeniaSettings
             patch.IsEnabled = e.Node.Checked;
             if (tabControl1.SelectedTab == tabPage2 && patchesTreeView.SelectedNode == e.Node)
                 ShowPatchDescription();
+            UpdateWindowTitle();
         }
 
         private void patchesSearchTextBox_TextChanged(object sender, EventArgs e)
@@ -401,6 +446,7 @@ namespace XeniaSettings
             {
                 string number = numericValueInput.Value.ToString(CultureInfo.InvariantCulture);
                 setting.Value = _configNumberIsFloat && !number.Contains(".") ? number + ".0" : number;
+                _committedNumericText = numericValueInput.Value.ToString("F" + numericValueInput.DecimalPlaces, CultureInfo.CurrentCulture);
             }
             else
             {
@@ -408,6 +454,7 @@ namespace XeniaSettings
                 setting.Value = _configStringQuote == '\'' && !text.Contains("'") ? "'" + text + "'"
                     : "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t") + "\"";
             }
+            UpdateWindowTitle();
         }
     }
 }

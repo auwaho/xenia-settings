@@ -37,6 +37,8 @@ xenia/
     └── Another Game.patch.toml
 ```
 
+The window title shows **Unsaved changes** while either tab has pending edits. Press **Ctrl+S** to save the currently open tab: Config saves the config file; Patches saves patch changes, including edited text. Saving one tab keeps the indicator visible if the other still has unsaved changes. Failed saves retain both the edits and the indicator.
+
 ### Config
 
 Select a setting and edit **Value**. Changes stay in memory until you choose **File → Save config**. Saving replaces only changed values in the original file.
