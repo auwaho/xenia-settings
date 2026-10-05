@@ -143,6 +143,7 @@ namespace XeniaSettings.Tests
         {
             public readonly List<string> Errors = new List<string>();
             protected override void ShowConfigError(string error, string title) { Errors.Add(title + ": " + error); }
+            protected override void ShowPatchErrors(List<string> errors, string title) { Errors.AddRange(errors.Select(error => title + ": " + error)); }
         }
 
         private static void ShowTestForm(MainForm form)

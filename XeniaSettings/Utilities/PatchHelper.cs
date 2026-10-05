@@ -75,25 +75,54 @@ namespace XeniaSettings.Utilities
                 int start = table.Index + table.Length;
                 int end = i + 1 < tables.Count ? tables[i + 1].Index : content.Length;
                 string body = content.Substring(start, end - start);
-                Match nestedTable = NestedTablePattern.Match(body);
-                string metadata = nestedTable.Success ? body.Substring(0, nestedTable.Index) : body;
-                MatchCollection enabledMatches = EnabledPattern.Matches(metadata);
-                if (enabledMatches.Count != 1)
-                    throw new FormatException("Patch " + (i + 1) + " must contain one is_enabled = true/false field.");
-
-                Group value = enabledMatches[0].Groups["value"];
-                file.Patches.Add(new Patch
-                {
-                    Name = ReadString(metadata, "name"),
-                    IsEnabled = value.Value == "true",
-                    TableHeader = table.Value,
-                    OriginalBody = body,
-                    EnabledValueIndex = value.Index,
-                    EnabledValueLength = value.Length
-                });
+                file.Patches.Add(ParsePatch(body, table.Value));
             }
 
             return file;
+        }
+
+        private static Patch ParsePatch(string body, string header)
+        {
+            Match nestedTable = NestedTablePattern.Match(body);
+            string metadata = nestedTable.Success ? body.Substring(0, nestedTable.Index) : body;
+            MatchCollection enabled = EnabledPattern.Matches(metadata);
+            if (enabled.Count != 1)
+                throw new FormatException("Expected one is_enabled = true/false field.");
+            Group value = enabled[0].Groups["value"];
+            return new Patch
+            {
+                Name = ReadString(metadata, "name"),
+                IsEnabled = value.Value == "true",
+                TableHeader = header,
+                OriginalBody = body,
+                EnabledValueIndex = value.Index,
+                EnabledValueLength = value.Length
+            };
+        }
+
+        internal static void UpdatePatch(Patch patch, string body)
+        {
+            string original = patch.Description;
+            body = body.Replace("\r\n", "\n");
+            if (body == original.Replace("\r\n", "\n")) return;
+            foreach (Match table in NestedTablePattern.Matches(body))
+            {
+                if (!Regex.IsMatch(body.Substring(table.Index),
+                    @"\A[ \t]*\[\[patch\.[A-Za-z0-9_]+\]\][ \t]*(?:#[^\n]*)?(?:\n|$)"))
+                    throw new FormatException("Only nested [[patch.type]] tables are allowed inside a patch.");
+            }
+
+            // Retain the separator before the next patch and the source newline convention.
+            if (original.EndsWith("\n", StringComparison.Ordinal) && !body.EndsWith("\n", StringComparison.Ordinal))
+                body += "\n";
+            int newline = original.IndexOf('\n');
+            if (newline > 0 && original[newline - 1] == '\r') body = body.Replace("\n", "\r\n");
+            Patch edited = ParsePatch(body, patch.TableHeader);
+            patch.Name = edited.Name;
+            patch.IsEnabled = edited.IsEnabled;
+            patch.OriginalBody = edited.OriginalBody;
+            patch.EnabledValueIndex = edited.EnabledValueIndex;
+            patch.EnabledValueLength = edited.EnabledValueLength;
         }
 
         private static string ReadString(string text, string key)

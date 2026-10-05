@@ -5,7 +5,7 @@ A lightweight Windows UI for configuring **Xenia Canary**, the Xbox 360 emulator
 ## Features
 
 - **Config:** browse settings by section, search names and descriptions, and edit values.
-- **Patches:** browse games and their patches, toggle individual patches, and search by game name, title ID, patch name, or patch contents.
+- **Patches:** browse games and their patches, toggle or edit individual patches, and search by game name, title ID, patch name, or patch contents.
 - View the original game metadata and complete patch contents, including nested write tables.
 - Save changes while preserving comments, formatting, encoding, and line endings.
 - Detect external file changes before saving and keep pending edits in memory if saving fails.
@@ -49,7 +49,11 @@ Quoted values use a text field without the surrounding quotes. Values `true` and
 
 Expand a game to see its patch checkboxes. Select a game to view the file header before the first `[[patch]]`, or select a patch to view its complete contents.
 
-Checkbox changes stay in memory until you choose **File → Save patches**. Saving changes only `is_enabled`. **File → Reload patches** reloads the folder and discards pending patch edits.
+Right-click a patch and choose **Edit...** to enable editing in the description area. Edit its text, including `value`, addresses, or comments. Pending text stays available when switching patches or tabs; other patches and game metadata open read-only.
+
+Checkbox and text changes stay in memory until you choose **File → Save patches**. Saving applies text edits and updates patch names and checkboxes, then returns the description to read-only mode. The game header and untouched patches retain their original text. Basic patch metadata and table headers are checked when saving; individual write values are edited as text. If saving fails, pending edits remain available.
+
+**File → Reload patches** reloads the folder and discards pending patch edits.
 
 If a file changes outside the application, saving that file is blocked with an error message. Reload it before editing again. A missing `patches` folder produces an empty tree; unreadable patch files are reported while other files remain available.
 

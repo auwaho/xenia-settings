@@ -28,6 +28,7 @@ namespace XeniaSettings
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.settingsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -60,6 +61,8 @@ namespace XeniaSettings
             this.label3 = new System.Windows.Forms.Label();
             this.patchesTreeView = new XeniaSettings.Utilities.PatchTreeView();
             this.patchDescRichTextBox = new System.Windows.Forms.RichTextBox();
+            this.patchContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.editPatchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -424,6 +427,7 @@ namespace XeniaSettings
             // 
             this.patchesTreeView.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.patchesTreeView.CheckBoxes = true;
+            this.patchesTreeView.ContextMenuStrip = this.patchContextMenu;
             this.patchesTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
             this.patchesTreeView.HideSelection = false;
             this.patchesTreeView.Location = new System.Drawing.Point(0, 0);
@@ -433,6 +437,7 @@ namespace XeniaSettings
             this.patchesTreeView.BeforeCheck += new System.Windows.Forms.TreeViewCancelEventHandler(this.patchesTreeView_BeforeCheck);
             this.patchesTreeView.AfterCheck += new System.Windows.Forms.TreeViewEventHandler(this.patchesTreeView_AfterCheck);
             this.patchesTreeView.AfterSelect += new System.Windows.Forms.TreeViewEventHandler(this.patchesTreeView_AfterSelect);
+            this.patchesTreeView.MouseDown += new System.Windows.Forms.MouseEventHandler(this.patchesTreeView_MouseDown);
             // 
             // patchDescRichTextBox
             // 
@@ -446,6 +451,17 @@ namespace XeniaSettings
             this.patchDescRichTextBox.Size = new System.Drawing.Size(444, 198);
             this.patchDescRichTextBox.TabIndex = 0;
             this.patchDescRichTextBox.Text = "";
+            this.patchDescRichTextBox.AcceptsTab = true;
+            this.patchDescRichTextBox.TextChanged += new System.EventHandler(this.patchDescRichTextBox_TextChanged);
+            //
+            // patchContextMenu
+            //
+            this.patchContextMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { this.editPatchToolStripMenuItem });
+            this.patchContextMenu.Name = "patchContextMenu";
+            this.patchContextMenu.Opening += new System.ComponentModel.CancelEventHandler(this.patchContextMenu_Opening);
+            this.editPatchToolStripMenuItem.Name = "editPatchToolStripMenuItem";
+            this.editPatchToolStripMenuItem.Text = "Edit...";
+            this.editPatchToolStripMenuItem.Click += new System.EventHandler(this.editPatchToolStripMenuItem_Click);
             // 
             // MainForm
             // 
@@ -525,6 +541,8 @@ namespace XeniaSettings
         private System.Windows.Forms.TextBox patchesSearchTextBox;
         private System.Windows.Forms.RichTextBox patchDescRichTextBox;
         private Utilities.PatchTreeView patchesTreeView;
+        private System.Windows.Forms.ContextMenuStrip patchContextMenu;
+        private System.Windows.Forms.ToolStripMenuItem editPatchToolStripMenuItem;
     }
 }
 

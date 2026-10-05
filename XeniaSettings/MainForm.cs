@@ -21,6 +21,9 @@ namespace XeniaSettings
         private bool _configNumberIsFloat;
         private List<PatchFile> _patchFiles = new List<PatchFile>();
         private bool _loadingPatches;
+        private bool _loadingPatchDescription;
+        private Patch _editingPatch;
+        private readonly Dictionary<Patch, string> _patchEdits = new Dictionary<Patch, string>();
 
         public MainForm()
         {
@@ -184,6 +187,8 @@ namespace XeniaSettings
         {
             List<string> errors;
             _patchFiles = PatchHelper.LoadPatches(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "patches"), out errors);
+            _patchEdits.Clear();
+            _editingPatch = null;
             _loadingPatches = true;
             patchesTreeView.BeginUpdate();
             try
@@ -208,7 +213,7 @@ namespace XeniaSettings
             ShowPatchErrors(errors, "Some patch files could not be loaded");
         }
 
-        private void ShowPatchErrors(List<string> errors, string title)
+        protected virtual void ShowPatchErrors(List<string> errors, string title)
         {
             if (errors.Count > 0)
                 MessageBox.Show(this, string.Join(Environment.NewLine, errors), title, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -221,33 +226,120 @@ namespace XeniaSettings
 
         private void savePatchesToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            ShowPatchErrors(PatchHelper.SavePatches(_patchFiles), "Some patch files could not be saved");
+            foreach (TreeNode game in patchesTreeView.Nodes)
+                foreach (TreeNode node in game.Nodes)
+                    if (!TryApplyPatchEdit(node)) return;
+
+            List<string> errors = PatchHelper.SavePatches(_patchFiles);
+            ShowPatchErrors(errors, "Some patch files could not be saved");
+            if (errors.Count == 0) _editingPatch = null;
+            ShowPatchDescription();
         }
 
         private void ShowPatchDescription()
         {
             object selected = patchesTreeView.SelectedNode?.Tag;
             var patch = selected as Patch;
-            patchDescRichTextBox.Text = patch != null
-                ? RemoveCommonIndentation(patch.Description)
-                : (selected as PatchFile)?.Description ?? string.Empty;
+            if (patch == null || _editingPatch != patch) _editingPatch = null;
+            _loadingPatchDescription = true;
+            try
+            {
+                patchDescRichTextBox.ReadOnly = _editingPatch == null;
+                patchDescRichTextBox.BackColor = patchDescRichTextBox.ReadOnly ? System.Drawing.SystemColors.Control : System.Drawing.SystemColors.Window;
+                patchDescRichTextBox.Text = patch != null
+                    ? GetPatchDescription(patch)
+                    : (selected as PatchFile)?.Description ?? string.Empty;
+            }
+            finally { _loadingPatchDescription = false; }
         }
 
-        private static string RemoveCommonIndentation(string text)
+        private string GetPatchDescription(Patch patch)
+        {
+            string draft;
+            return _patchEdits.TryGetValue(patch, out draft) ? draft : RemoveCommonIndentation(patch.Description);
+        }
+
+        private static string GetCommonIndentation(string text)
         {
             var lines = Regex.Matches(text, @"^[ \t]*(?=\S)", RegexOptions.Multiline);
-            if (lines.Count == 0) return text;
+            if (lines.Count == 0) return string.Empty;
 
             string indentation = lines[0].Value;
             foreach (Match line in lines)
             {
                 while (indentation.Length > 0 && !line.Value.StartsWith(indentation, StringComparison.Ordinal))
                     indentation = indentation.Substring(0, indentation.Length - 1);
-                if (indentation.Length == 0) return text;
+                if (indentation.Length == 0) return string.Empty;
             }
 
+            return indentation;
+        }
+
+        private static string RemoveCommonIndentation(string text)
+        {
+            string indentation = GetCommonIndentation(text);
             // Remove only the shared margin for display; nested indentation and stored text stay intact.
             return Regex.Replace(text, "^" + Regex.Escape(indentation), string.Empty, RegexOptions.Multiline);
+        }
+
+        private void patchesTreeView_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+                patchesTreeView.SelectedNode = patchesTreeView.GetNodeAt(e.Location);
+        }
+
+        private void patchContextMenu_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        {
+            e.Cancel = !(patchesTreeView.SelectedNode?.Tag is Patch);
+        }
+
+        private void editPatchToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            _editingPatch = patchesTreeView.SelectedNode?.Tag as Patch;
+            if (_editingPatch == null) return;
+            patchDescRichTextBox.ReadOnly = false;
+            patchDescRichTextBox.BackColor = System.Drawing.SystemColors.Window;
+            patchDescRichTextBox.Focus();
+        }
+
+        private void patchDescRichTextBox_TextChanged(object sender, EventArgs e)
+        {
+            if (!_loadingPatchDescription && _editingPatch != null)
+                _patchEdits[_editingPatch] = patchDescRichTextBox.Text;
+        }
+
+        private bool TryApplyPatchEdit(TreeNode node)
+        {
+            var patch = node.Tag as Patch;
+            string draft;
+            if (patch == null || !_patchEdits.TryGetValue(patch, out draft)) return true;
+            try
+            {
+                string displayed = RemoveCommonIndentation(patch.Description).Replace("\r\n", "\n");
+                if (draft.Replace("\r\n", "\n") != displayed)
+                {
+                    string indentation = GetCommonIndentation(patch.Description);
+                    string body = Regex.Replace(draft.Replace("\r\n", "\n"), @"^(?=.)", indentation, RegexOptions.Multiline);
+                    PatchHelper.UpdatePatch(patch, body);
+                }
+            }
+            catch (Exception ex) when (ex is FormatException || ex is ArgumentException)
+            {
+                patchesTreeView.SelectedNode = node;
+                _editingPatch = patch;
+                ShowPatchDescription();
+                ShowPatchErrors(new List<string> { patch.Name + ": " + ex.Message }, "Could not apply patch edit");
+                patchDescRichTextBox.Focus();
+                return false;
+            }
+
+            _patchEdits.Remove(patch);
+            node.Text = patch.Name;
+            bool loading = _loadingPatches;
+            _loadingPatches = true;
+            try { node.Checked = patch.IsEnabled; }
+            finally { _loadingPatches = loading; }
+            return true;
         }
 
         private void patchesTreeView_AfterSelect(object sender, TreeViewEventArgs e)
@@ -258,6 +350,7 @@ namespace XeniaSettings
         private void patchesTreeView_BeforeCheck(object sender, TreeViewCancelEventArgs e)
         {
             e.Cancel = !(e.Node.Tag is Patch);
+            if (!e.Cancel && !_loadingPatches) e.Cancel = !TryApplyPatchEdit(e.Node);
         }
 
         private void patchesTreeView_AfterCheck(object sender, TreeViewEventArgs e)
@@ -281,7 +374,7 @@ namespace XeniaSettings
                     .SelectMany(game => new[] { game }.Concat(game.Nodes.Cast<TreeNode>())).ToList();
                 match = nodes.FirstOrDefault(n => n.Text.Equals(search, StringComparison.OrdinalIgnoreCase))
                     ?? nodes.FirstOrDefault(n => n.Text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
-                    ?? nodes.FirstOrDefault(n => ((n.Tag as PatchFile)?.Description ?? (n.Tag as Patch)?.Description ?? string.Empty)
+                    ?? nodes.FirstOrDefault(n => ((n.Tag as PatchFile)?.Description ?? (n.Tag is Patch ? GetPatchDescription((Patch)n.Tag) : string.Empty))
                         .IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
             }
             TreeViewHelper.ApplySearch(patchesTreeView, patchDescRichTextBox, search, match, ShowPatchDescription);

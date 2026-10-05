@@ -50,6 +50,10 @@ namespace XeniaSettings.Tests
                     TestConfigFormFailures();
                     TestRepeatedSearch();
                     TestSimpleConfigInputs();
+                    TestPatchTextPreservation(new UTF8Encoding(false), "\n", "utf8");
+                    TestPatchTextPreservation(new UTF8Encoding(true), "\r\n", "utf8-bom");
+                    TestPatchTextPreservation(new UnicodeEncoding(false, true), "\r\n", "utf16");
+                    TestInlinePatchEditing();
                     if (args.Length > 0) TestCorpus(args[0]);
                     Console.WriteLine("PASS: " + _checks + " checks.");
                     return 0;
