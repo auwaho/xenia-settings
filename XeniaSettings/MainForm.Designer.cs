@@ -49,6 +49,8 @@ namespace XeniaSettings
             this.configTreeView = new System.Windows.Forms.TreeView();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.valueTextBox = new System.Windows.Forms.TextBox();
+            this.booleanValueComboBox = new System.Windows.Forms.ComboBox();
+            this.numericValueInput = new System.Windows.Forms.NumericUpDown();
             this.label1 = new System.Windows.Forms.Label();
             this.configDescRichTextBox = new System.Windows.Forms.RichTextBox();
             this.tabPage2 = new System.Windows.Forms.TabPage();
@@ -278,6 +280,8 @@ namespace XeniaSettings
             // splitContainer2.Panel1
             // 
             this.splitContainer2.Panel1.Controls.Add(this.valueTextBox);
+            this.splitContainer2.Panel1.Controls.Add(this.booleanValueComboBox);
+            this.splitContainer2.Panel1.Controls.Add(this.numericValueInput);
             this.splitContainer2.Panel1.Controls.Add(this.label1);
             // 
             // splitContainer2.Panel2
@@ -292,20 +296,44 @@ namespace XeniaSettings
             // 
             this.valueTextBox.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right)));
             this.valueTextBox.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.valueTextBox.Location = new System.Drawing.Point(93, 3);
+            this.valueTextBox.Location = new System.Drawing.Point(47, 3);
             this.valueTextBox.Name = "valueTextBox";
-            this.valueTextBox.Size = new System.Drawing.Size(348, 22);
+            this.valueTextBox.Size = new System.Drawing.Size(394, 22);
             this.valueTextBox.TabIndex = 2;
             this.valueTextBox.TextChanged += new System.EventHandler(this.valueTextBox_TextChanged);
+            //
+            // booleanValueComboBox
+            //
+            this.booleanValueComboBox.Location = new System.Drawing.Point(47, 3);
+            this.booleanValueComboBox.Size = new System.Drawing.Size(100, 23);
+            this.booleanValueComboBox.Name = "booleanValueComboBox";
+            this.booleanValueComboBox.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.booleanValueComboBox.Items.AddRange(new object[] { "true", "false" });
+            this.booleanValueComboBox.TabIndex = 2;
+            this.booleanValueComboBox.Visible = false;
+            this.booleanValueComboBox.SelectedIndexChanged += new System.EventHandler(this.configValueInput_Changed);
+            //
+            // numericValueInput
+            //
+            this.numericValueInput.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.numericValueInput.Location = new System.Drawing.Point(47, 3);
+            this.numericValueInput.Size = new System.Drawing.Size(394, 23);
+            this.numericValueInput.Name = "numericValueInput";
+            this.numericValueInput.Font = new System.Drawing.Font("Consolas", 9F);
+            this.numericValueInput.Minimum = decimal.MinValue;
+            this.numericValueInput.Maximum = decimal.MaxValue;
+            this.numericValueInput.TabIndex = 2;
+            this.numericValueInput.Visible = false;
+            this.numericValueInput.ValueChanged += new System.EventHandler(this.configValueInput_Changed);
             // 
             // label1
             // 
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(3, 7);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(81, 15);
+            this.label1.Size = new System.Drawing.Size(38, 15);
             this.label1.TabIndex = 1;
-            this.label1.Text = "Current value:";
+            this.label1.Text = "Value:";
             // 
             // configDescRichTextBox
             // 
@@ -397,9 +425,9 @@ namespace XeniaSettings
             this.patchesTreeView.BorderStyle = System.Windows.Forms.BorderStyle.None;
             this.patchesTreeView.CheckBoxes = true;
             this.patchesTreeView.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.patchesTreeView.HideSelection = false;
             this.patchesTreeView.Location = new System.Drawing.Point(0, 0);
             this.patchesTreeView.Name = "patchesTreeView";
-            this.patchesTreeView.HideSelection = false;
             this.patchesTreeView.Size = new System.Drawing.Size(444, 380);
             this.patchesTreeView.TabIndex = 0;
             this.patchesTreeView.BeforeCheck += new System.Windows.Forms.TreeViewCancelEventHandler(this.patchesTreeView_BeforeCheck);
@@ -481,6 +509,8 @@ namespace XeniaSettings
         private System.Windows.Forms.SplitContainer splitContainer1;
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.TextBox valueTextBox;
+        private System.Windows.Forms.ComboBox booleanValueComboBox;
+        private System.Windows.Forms.NumericUpDown numericValueInput;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.SplitContainer splitContainer3;
         private System.Windows.Forms.SplitContainer splitContainer4;
@@ -493,8 +523,8 @@ namespace XeniaSettings
         private System.Windows.Forms.SplitContainer splitContainer5;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.TextBox patchesSearchTextBox;
-        private System.Windows.Forms.TreeView patchesTreeView;
         private System.Windows.Forms.RichTextBox patchDescRichTextBox;
+        private Utilities.PatchTreeView patchesTreeView;
     }
 }
 

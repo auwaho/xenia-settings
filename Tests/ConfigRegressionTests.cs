@@ -166,7 +166,7 @@ namespace XeniaSettings.Tests
                 {
                     ShowTestForm(form);
                     var tree = Control<TreeView>(form, "configTreeView");
-                    var value = Control<TextBox>(form, "valueTextBox");
+                    var value = Control<NumericUpDown>(form, "numericValueInput");
                     var search = Control<TextBox>(form, "configSearchTextBox");
                     var description = Control<RichTextBox>(form, "configDescRichTextBox");
                     var model = Control<ConfigFile>(form, "_config");
@@ -174,7 +174,7 @@ namespace XeniaSettings.Tests
                     Check(!model.IsModified && FindSetting(model, "First", "array").Value.Contains("\n"), "Displaying a multiline setting does not modify its source value.");
                     search.Text = "shared";
                     tree.SelectedNode = tree.Nodes[1].Nodes[0];
-                    value.Text = "42";
+                    value.Value = 42;
                     Check(FindSetting(model, "Second", "shared").Value == "42" && FindSetting(model, "First", "shared").Value == "1", "Config uses node identity for duplicate setting names.");
                     TreeNode selected = tree.SelectedNode;
                     string previousDescription = description.Text;
@@ -183,7 +183,7 @@ namespace XeniaSettings.Tests
                     File.Delete(path);
                     Control<ToolStripMenuItem>(form, "reloadConfigToolStripMenuItem").PerformClick();
                     Check(form.Errors.Count == 1 && Control<ConfigFile>(form, "_config") == model, "Failed reload retains the previous config model.");
-                    Check(tree.SelectedNode == selected && value.Text == "42" && description.Text == previousDescription && search.Text == "shared", "Failed reload preserves selection, edits, description and search.");
+                    Check(tree.SelectedNode == selected && value.Value == 42 && description.Text == previousDescription && search.Text == "shared", "Failed reload preserves selection, edits, description and search.");
                     Check(((Patch)patches.Nodes[0].Nodes[0].Tag).IsEnabled, "Failed config reload preserves unsaved patch changes.");
                     File.WriteAllText(path, source, new UTF8Encoding(false));
                     File.SetAttributes(path, FileAttributes.ReadOnly);
@@ -192,7 +192,7 @@ namespace XeniaSettings.Tests
                     File.SetAttributes(path, FileAttributes.Normal);
                     Control<ToolStripMenuItem>(form, "saveConfigToolStripMenuItem").PerformClick();
                     Check(!model.IsModified && File.ReadAllText(path) == source.Replace("shared = 2 #", "shared = 42 #"), "Save menu can retry after a failed write.");
-                    value.Text = "43";
+                    value.Value = 43;
                     File.AppendAllText(path, "# external edit\n");
                     Control<ToolStripMenuItem>(form, "saveConfigToolStripMenuItem").PerformClick();
                     Check(form.Errors.Count == 3 && model.IsModified && File.ReadAllText(path).Contains("# external edit"), "Save menu reports an external edit conflict.");

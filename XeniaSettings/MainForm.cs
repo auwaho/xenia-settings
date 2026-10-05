@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using XeniaSettings.Models;
 using XeniaSettings.Utilities;
@@ -13,6 +15,10 @@ namespace XeniaSettings
     {
         private ConfigFile _config;
         private bool _loadingConfigValue;
+        private enum ConfigValueKind { String, Boolean, Number }
+        private ConfigValueKind _configValueKind;
+        private char _configStringQuote;
+        private bool _configNumberIsFloat;
         private List<PatchFile> _patchFiles = new List<PatchFile>();
         private bool _loadingPatches;
 
@@ -99,6 +105,8 @@ namespace XeniaSettings
             configTreeView.Enabled = enabled;
             configSearchTextBox.Enabled = enabled;
             valueTextBox.Enabled = enabled;
+            booleanValueComboBox.Enabled = enabled;
+            numericValueInput.Enabled = enabled;
             saveConfigToolStripMenuItem.Enabled = enabled;
         }
 
@@ -110,6 +118,7 @@ namespace XeniaSettings
         private void saveConfigToolStripMenuItem_Click(object sender, EventArgs e)
         {
             if (_config == null) return;
+            if (_configValueKind == ConfigValueKind.Number) numericValueInput.Value = numericValueInput.Value;
             string error;
             if (!ConfigHelper.TrySaveConfig(_config, out error)) ShowConfigError(error, "Could not save config");
         }
@@ -125,7 +134,35 @@ namespace XeniaSettings
             var setting = configTreeView.SelectedNode?.Tag as Setting;
             configDescRichTextBox.Text = setting?.Description;
             _loadingConfigValue = true;
-            try { valueTextBox.Text = setting?.Value ?? string.Empty; }
+            try
+            {
+                string raw = setting?.Value.Trim() ?? string.Empty;
+                bool quoted = raw.Length >= 2 && (raw[0] == '"' || raw[0] == '\'') && raw[raw.Length - 1] == raw[0];
+                _configValueKind = quoted ? ConfigValueKind.String
+                    : raw == "true" || raw == "false" ? ConfigValueKind.Boolean : ConfigValueKind.Number;
+                valueTextBox.Visible = setting == null || _configValueKind == ConfigValueKind.String;
+                booleanValueComboBox.Visible = setting != null && _configValueKind == ConfigValueKind.Boolean;
+                numericValueInput.Visible = setting != null && _configValueKind == ConfigValueKind.Number;
+                valueTextBox.Enabled = booleanValueComboBox.Enabled = numericValueInput.Enabled = setting != null;
+                if (quoted)
+                {
+                    _configStringQuote = raw[0];
+                    string text = raw.Substring(1, raw.Length - 2);
+                    valueTextBox.Text = _configStringQuote == '"' ? Regex.Replace(text, @"\\([""\\])", "$1") : text;
+                }
+                else if (_configValueKind == ConfigValueKind.Boolean)
+                    booleanValueComboBox.SelectedItem = raw;
+                else
+                {
+                    decimal number;
+                    decimal.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+                    _configNumberIsFloat = raw.IndexOfAny(new[] { '.', 'e', 'E' }) >= 0;
+                    numericValueInput.DecimalPlaces = _configNumberIsFloat ? Math.Max(6, (decimal.GetBits(number)[3] >> 16) & 0xFF) : 0;
+                    numericValueInput.Increment = _configNumberIsFloat ? 0.1m : 1m;
+                    numericValueInput.Value = number;
+                    if (setting == null) valueTextBox.Clear();
+                }
+            }
             finally { _loadingConfigValue = false; }
         }
 
@@ -190,7 +227,27 @@ namespace XeniaSettings
         private void ShowPatchDescription()
         {
             object selected = patchesTreeView.SelectedNode?.Tag;
-            patchDescRichTextBox.Text = (selected as PatchFile)?.Description ?? (selected as Patch)?.Description ?? string.Empty;
+            var patch = selected as Patch;
+            patchDescRichTextBox.Text = patch != null
+                ? RemoveCommonIndentation(patch.Description)
+                : (selected as PatchFile)?.Description ?? string.Empty;
+        }
+
+        private static string RemoveCommonIndentation(string text)
+        {
+            var lines = Regex.Matches(text, @"^[ \t]*(?=\S)", RegexOptions.Multiline);
+            if (lines.Count == 0) return text;
+
+            string indentation = lines[0].Value;
+            foreach (Match line in lines)
+            {
+                while (indentation.Length > 0 && !line.Value.StartsWith(indentation, StringComparison.Ordinal))
+                    indentation = indentation.Substring(0, indentation.Length - 1);
+                if (indentation.Length == 0) return text;
+            }
+
+            // Remove only the shared margin for display; nested indentation and stored text stay intact.
+            return Regex.Replace(text, "^" + Regex.Escape(indentation), string.Empty, RegexOptions.Multiline);
         }
 
         private void patchesTreeView_AfterSelect(object sender, TreeViewEventArgs e)
@@ -235,11 +292,29 @@ namespace XeniaSettings
             UpdateSelectedConfigValue();
         }
 
+        private void configValueInput_Changed(object sender, EventArgs e)
+        {
+            UpdateSelectedConfigValue();
+        }
+
         private void UpdateSelectedConfigValue()
         {
             if (_loadingConfigValue) return;
             var setting = configTreeView.SelectedNode?.Tag as Setting;
-            if (setting != null) setting.Value = valueTextBox.Text;
+            if (setting == null) return;
+            if (_configValueKind == ConfigValueKind.Boolean)
+                setting.Value = booleanValueComboBox.SelectedItem?.ToString() ?? setting.Value;
+            else if (_configValueKind == ConfigValueKind.Number)
+            {
+                string number = numericValueInput.Value.ToString(CultureInfo.InvariantCulture);
+                setting.Value = _configNumberIsFloat && !number.Contains(".") ? number + ".0" : number;
+            }
+            else
+            {
+                string text = valueTextBox.Text;
+                setting.Value = _configStringQuote == '\'' && !text.Contains("'") ? "'" + text + "'"
+                    : "\"" + text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n").Replace("\t", "\\t") + "\"";
+            }
         }
     }
 }

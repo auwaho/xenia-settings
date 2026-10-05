@@ -39,11 +39,11 @@ xenia/
 
 ### Config
 
-Select a setting and edit **Current value**. Changes stay in memory until you choose **File → Save config**. Saving replaces only changed values in the original file.
+Select a setting and edit **Value**. Changes stay in memory until you choose **File → Save config**. Saving replaces only changed values in the original file.
 
 **File → Reload config** loads the file again and discards pending config edits after a successful load. If loading fails, the previous settings and pending edits remain available. If the config is missing at startup, restore it and choose **Reload config** to enable the Config tab.
 
-Values are currently entered as raw TOML and are not validated. For example, keep quotation marks around string values.
+Quoted values use a text field without the surrounding quotes. Values `true` and `false` use a dropdown with those two choices; other values use a numeric input. Fractional numbers retain decimal places. Quotes are added automatically when saving strings.
 
 ### Patches
 

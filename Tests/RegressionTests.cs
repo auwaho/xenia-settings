@@ -49,6 +49,7 @@ namespace XeniaSettings.Tests
                     TestForm();
                     TestConfigFormFailures();
                     TestRepeatedSearch();
+                    TestSimpleConfigInputs();
                     if (args.Length > 0) TestCorpus(args[0]);
                     Console.WriteLine("PASS: " + _checks + " checks.");
                     return 0;
@@ -182,7 +183,9 @@ namespace XeniaSettings.Tests
                     Check(!game.Checked, "Game headers cannot be toggled.");
                     TreeNode patchNode = game.Nodes[0];
                     tree.SelectedNode = patchNode;
-                    Check(description.Text == Normalize(((Patch)patchNode.Tag).Description), "Selecting a patch shows its complete body.");
+                    string expectedDescription = string.Join("\n", Normalize(((Patch)patchNode.Tag).Description)
+                        .Split('\n').Select(line => line.StartsWith("    ") ? line.Substring(4) : line));
+                    Check(description.Text == expectedDescription, "Selecting a patch shows its complete body without the common indentation.");
                     patchNode.Checked = true;
                     Check(((Patch)patchNode.Tag).IsEnabled && description.Text.Contains("is_enabled = true"), "Checkbox updates model and description.");
                     Check((SendMessage(tree.Handle, 0x1127, patchNode.Handle, new IntPtr(0xF000)).ToInt64() & 0xF000) == 0x2000, "Patch has a checked native checkbox.");
@@ -236,12 +239,12 @@ namespace XeniaSettings.Tests
                     config.SelectedNode = config.Nodes[0].Nodes[0];
                     var value = Control<TextBox>(form, "valueTextBox");
                     string originalValue = value.Text;
-                    value.Text = "\"nop\"";
+                    value.Text = "nop";
                     string configDescription = configDescriptionBox.Text;
                     string patchDescription = description.Text;
                     tabs.SelectedIndex = 1;
                     tabs.SelectedIndex = 0;
-                    Check(value.Text == "\"nop\"" && configDescriptionBox.Text == configDescription, "Config edits and descriptions survive switching tabs.");
+                    Check(value.Text == "nop" && configDescriptionBox.Text == configDescription, "Config edits and descriptions survive switching tabs.");
                     Check(description.Text == patchDescription && description.Parent == Control<SplitContainer>(form, "splitContainer3").Panel2,
                         "Patch description stays independent from Config.");
                     value.Text = originalValue;
@@ -253,6 +256,39 @@ namespace XeniaSettings.Tests
             finally { Environment.CurrentDirectory = previousDirectory; }
         }
 
+        private static void TestSimpleConfigInputs()
+        {
+            using (var form = new MainForm())
+            {
+                ShowTestForm(form);
+                var tree = Control<TreeView>(form, "configTreeView");
+                var model = Control<ConfigFile>(form, "_config");
+                var boolean = Control<ComboBox>(form, "booleanValueComboBox");
+                var number = Control<NumericUpDown>(form, "numericValueInput");
+                var text = Control<TextBox>(form, "valueTextBox");
+                var nodes = tree.Nodes.Cast<TreeNode>().SelectMany(n => n.Nodes.Cast<TreeNode>()).ToList();
+                foreach (TreeNode node in nodes) tree.SelectedNode = node;
+                Check(!model.IsModified, "Displaying every config input retains all original values.");
+                tree.SelectedNode = nodes.First(n => ((Setting)n.Tag).Name == "ffmpeg_verbose");
+                Check(boolean.Visible && !number.Visible && !text.Visible && boolean.DropDownStyle == ComboBoxStyle.DropDownList && boolean.Items.Count == 2 && (string)boolean.SelectedItem == "false", "Boolean values use a fixed true/false list.");
+                boolean.SelectedItem = "true";
+                Check(((Setting)tree.SelectedNode.Tag).Value == "true", "Selecting true writes a boolean value.");
+                boolean.SelectedItem = "false";
+                tree.SelectedNode = nodes.First(n => ((Setting)n.Tag).Name == "apu_max_queued_frames");
+                Check(number.Visible && number.DecimalPlaces == 0 && !text.Visible, "Whole numbers use the numeric input.");
+                number.Value = -1;
+                Check(((Setting)tree.SelectedNode.Tag).Value == "-1", "Numeric input supports negative values.");
+                number.Value = 64;
+                tree.SelectedNode = nodes.First(n => ((Setting)n.Tag).Name == "postprocess_ffx_fsr_sharpness_reduction");
+                Check(number.Visible && number.DecimalPlaces > 0, "Fractional values retain decimal precision.");
+                number.Value = 1.5m;
+                Check(((Setting)tree.SelectedNode.Tag).Value == "1.5", "Numeric input serializes decimal values with a point.");
+                tree.SelectedNode = nodes.First(n => ((Setting)n.Tag).Name == "apu");
+                Check(text.Visible && text.Text == "any" && !boolean.Visible && !number.Visible, "Quoted values use the string field without delimiters.");
+                text.Text = "a\"b\\c";
+                Check(((Setting)tree.SelectedNode.Tag).Value == "\"a\\\"b\\\\c\"", "String input restores quotes and escapes embedded quotes and slashes.");
+            }
+        }
         private static void TestCorpus(string directory)
         {
             List<string> errors;
