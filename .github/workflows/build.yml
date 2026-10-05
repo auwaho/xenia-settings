@@ -1,4 +1,4 @@
-name: Build and test
+name: Build, test, and release
 
 on:
   push:
@@ -38,3 +38,45 @@ jobs:
         run: |
           & './${{ matrix.test-exe }}'
           exit $LASTEXITCODE
+      - name: Check release packaging and recovery
+        if: matrix.configuration == 'Release'
+        shell: pwsh
+        run: ./Tests/ReleaseWorkflowTests.ps1
+      - name: Package release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
+        shell: pwsh
+        run: ./.github/scripts/package-release.ps1
+      - name: Upload release package
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.configuration == 'Release'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-package
+          path: dist/xenia-settings-windows.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Update Latest Build
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: windows-2022
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    concurrency:
+      group: latest-build
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-package
+          path: dist
+      - name: Publish tested build
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ./.github/scripts/publish-release.ps1 -Repository $env:GITHUB_REPOSITORY -Commit $env:GITHUB_SHA

@@ -21,8 +21,8 @@ A lightweight Windows UI for configuring **Xenia Canary**, the Xbox 360 emulator
 
 Requires **Windows** and **.NET Framework 4.7.2 or later**.
 
-1. Build the application using the instructions below.
-2. Copy `xenia_settings.exe` and `xenia_settings.exe.config` into your Xenia Canary folder.
+1. Download `xenia-settings-windows.zip` from [Latest Build](https://github.com/auwaho/xenia-settings/releases/tag/latest-build) and extract it, or build the application using the instructions below.
+2. Copy `xenia_settings.exe` into your Xenia Canary folder.
 3. Run `xenia_settings.exe`.
 
 The application reads the existing config and patch files next to its executable:
@@ -31,7 +31,6 @@ The application reads the existing config and patch files next to its executable
 xenia/
 ├── xenia_canary.exe
 ├── xenia_settings.exe
-├── xenia_settings.exe.config
 ├── xenia-canary.config.toml
 └── patches/
     ├── Game.patch.toml
@@ -83,7 +82,15 @@ To also check an existing emulator patch collection and its neighboring config w
 
 Tests modify only copied fixtures in their own output folder. Rebuild the test project before another run to restore its fixtures.
 
-GitHub Actions builds and runs regression checks for **Release / Any CPU** and **Debug / x64** on Windows.
+GitHub Actions builds and runs regression checks for **Release / Any CPU** and **Debug / x64** on Windows. The Release job also checks packaging and publication recovery without making GitHub API calls.
+
+After both builds pass for a push to `main`, the workflow updates one **Latest Build** release and its `latest-build` tag to the tested commit. The ZIP contains only `xenia_settings.exe` and `LICENSE`. Pull requests, pushes to other branches, and manual workflow runs only run checks. Older builds are skipped if `main` has moved on. An interrupted publication remains a draft; rerunning the release job retries it.
+
+To run the release workflow checks locally after a Release build:
+
+```powershell
+./Tests/ReleaseWorkflowTests.ps1
+```
 
 ## License
 
