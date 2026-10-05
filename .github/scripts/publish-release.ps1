@@ -8,12 +8,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$PSNativeCommandUseErrorActionPreference = $false
 $archivePath = (Resolve-Path -LiteralPath $Archive).Path
 $tag = 'latest-build'
 
 function Invoke-GitHub([string[]]$Arguments) {
-    & gh @Arguments
-    if ($LASTEXITCODE -ne 0) { throw "GitHub CLI failed: gh $($Arguments -join ' ')" }
+    $output = & gh @Arguments 2>&1
+    if ($LASTEXITCODE -ne 0) { throw "GitHub CLI failed: gh $($Arguments -join ' ')`n$($output -join [Environment]::NewLine)" }
+    $output
 }
 
 # A slower older workflow must not replace the build for a newer push to main.
@@ -44,7 +46,15 @@ else {
 }
 
 Invoke-GitHub -Arguments @('release', 'upload', $tag, $archivePath, '--repo', $Repository, '--clobber')
-Invoke-GitHub -Arguments @('api', '--method', 'PATCH', "repos/$Repository/git/refs/tags/$tag",
-    '-f', "sha=$Commit", '-F', 'force=true')
+# A draft release does not create its tag until publication; first builds and retries may lack it.
+& gh api "repos/$Repository/git/ref/tags/$tag" >$null 2>$null
+if ($LASTEXITCODE -eq 0) {
+    Invoke-GitHub -Arguments @('api', '--method', 'PATCH', "repos/$Repository/git/refs/tags/$tag",
+        '-f', "sha=$Commit", '-F', 'force=true')
+}
+else {
+    Invoke-GitHub -Arguments @('api', '--method', 'POST', "repos/$Repository/git/refs",
+        '-f', "ref=refs/tags/$tag", '-f', "sha=$Commit")
+}
 Invoke-GitHub -Arguments @('release', 'edit', $tag, '--repo', $Repository,
     '--target', $Commit, '--title', 'Latest Build', '--notes-file', $notesPath, '--draft=false', '--latest')

@@ -45,6 +45,17 @@ function gh {
     if ($command[0] -eq 'api' -and $command[1].EndsWith('/commits/main')) {
         return $global:xeniaReleaseTestState.Head
     }
+    if ($command[0] -eq 'api' -and $command[1].EndsWith('/git/ref/tags/latest-build')) {
+        if (-not $global:xeniaReleaseTestState.HasTag) { $global:LASTEXITCODE = 1 }
+        return
+    }
+    if ($command[0] -eq 'api' -and $command -contains 'POST') {
+        $global:xeniaReleaseTestState.HasTag = $true
+    }
+    if ($command[0] -eq 'api' -and $command -contains 'PATCH' -and -not $global:xeniaReleaseTestState.HasTag) {
+        $global:LASTEXITCODE = 1
+        return 'Tag reference not found.'
+    }
     if ($command[0] -eq 'release' -and $command[1] -eq 'view') {
         if ($global:xeniaReleaseTestState.Scenario -eq 'new') { $global:LASTEXITCODE = 1; return }
         return ($global:xeniaReleaseTestState.Scenario -eq 'draft').ToString().ToLowerInvariant()
@@ -58,6 +69,7 @@ $commit = '0123456789abcdef0123456789abcdef01234567'
 try {
     foreach ($scenario in @('new', 'published', 'draft', 'upload-failure', 'stale')) {
         $global:xeniaReleaseTestState = @{
+            HasTag = $scenario -ne 'new' -and $scenario -ne 'draft'
             Scenario = $scenario
             Head = if ($scenario -eq 'stale') { 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' } else { $commit }
             Calls = New-Object 'System.Collections.Generic.List[object]'
@@ -67,7 +79,7 @@ try {
         catch { $failed = $true }
         $calls = $global:xeniaReleaseTestState.Calls
         $publishCalls = @($calls | Where-Object { $_ -contains '--draft=false' })
-        $tagCalls = @($calls | Where-Object { $_ -contains 'PATCH' })
+        $tagCalls = @($calls | Where-Object { $_ -contains 'PATCH' -or $_ -contains 'POST' })
         if ($scenario -eq 'stale') {
             Check (-not $failed -and $calls.Count -eq 1) 'An older completed workflow cannot mutate the newer release.'
         }
@@ -77,6 +89,12 @@ try {
         }
         else {
             Check (-not $failed -and $publishCalls.Count -eq 1 -and $tagCalls.Count -eq 1) "$scenario release publishes after uploading and moving the tag."
+            if ($scenario -eq 'new' -or $scenario -eq 'draft') {
+                Check ($tagCalls[0] -contains 'POST' -and $tagCalls[0] -contains 'ref=refs/tags/latest-build') "$scenario release creates its missing tag."
+            }
+            else {
+                Check ($tagCalls[0] -contains 'PATCH') 'Refreshing an existing tag updates its reference.'
+            }
             Check ($tagCalls[0] -contains "sha=$commit" -and $publishCalls[0] -contains $commit) "$scenario release points to the tested commit."
             $uploadCalls = @($calls | Where-Object { $_[0] -eq 'release' -and $_[1] -eq 'upload' })
             Check ($uploadCalls.Count -eq 1 -and $uploadCalls[0] -contains $archivePath -and $uploadCalls[0] -contains '--clobber') "$scenario release uploads the tested archive under the same asset name."

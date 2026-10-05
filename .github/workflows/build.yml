@@ -79,4 +79,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ./.github/scripts/publish-release.ps1 -Repository $env:GITHUB_REPOSITORY -Commit $env:GITHUB_SHA
+          try {
+            ./.github/scripts/publish-release.ps1 -Repository $env:GITHUB_REPOSITORY -Commit $env:GITHUB_SHA
+          }
+          catch {
+            $message = $_.Exception.Message.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error::$message"
+            exit 1
+          }
