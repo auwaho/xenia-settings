@@ -2,6 +2,7 @@ using System.Windows.Forms;
 
 namespace XeniaSettings.Utilities
 {
+    [System.ComponentModel.DesignerCategory("")]
     internal class PatchTreeView : TreeView
     {
         protected override void CreateHandle()

@@ -35,17 +35,20 @@ namespace XeniaSettings.Tests
                 try
                 {
                     Directory.CreateDirectory(TestDirectory);
+                    TestApplicationReference();
                     TestFixtures();
                     TestPreservation(new UTF8Encoding(false), "\n", "utf8");
                     TestPreservation(new UTF8Encoding(true), "\r\n", "utf8-bom");
                     TestPreservation(new UnicodeEncoding(false, true), "\r\n", "utf16");
                     TestErrors();
+                    TestPatchBatchSaveFailure();
                     TestConfigPreservation(new UTF8Encoding(false), "\n", "utf8");
                     TestConfigPreservation(new UTF8Encoding(true), "\r\n", "utf8-bom");
                     TestConfigPreservation(new UnicodeEncoding(false, true), "\r\n", "utf16");
                     TestConfigErrors();
                     TestForm();
                     TestConfigFormFailures();
+                    TestRepeatedSearch();
                     if (args.Length > 0) TestCorpus(args[0]);
                     Console.WriteLine("PASS: " + _checks + " checks.");
                     return 0;

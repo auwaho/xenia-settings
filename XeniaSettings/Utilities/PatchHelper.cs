@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using XeniaSettings.Models;
 
@@ -53,14 +52,8 @@ namespace XeniaSettings.Utilities
 
         internal static PatchFile LoadPatchFile(string path)
         {
-            byte[] bytes = File.ReadAllBytes(path);
-            string content;
-            Encoding encoding;
-            using (var reader = new StreamReader(new MemoryStream(bytes), new UTF8Encoding(false, true), true))
-            {
-                content = reader.ReadToEnd();
-                encoding = reader.CurrentEncoding;
-            }
+            TextFileData data = TextFileStorage.Read(path);
+            string content = data.Content;
 
             MatchCollection tables = PatchTablePattern.Matches(content);
             string header = tables.Count == 0 ? content : content.Substring(0, tables[0].Index);
@@ -70,8 +63,8 @@ namespace XeniaSettings.Utilities
                 TitleName = ReadString(header, "title_name"),
                 TitleId = ReadString(header, "title_id"),
                 Description = header,
-                Encoding = encoding,
-                OriginalBytes = bytes,
+                Encoding = data.Encoding,
+                OriginalBytes = data.Bytes,
                 OriginalContent = content,
                 Patches = new List<Patch>()
             };
@@ -137,35 +130,15 @@ namespace XeniaSettings.Utilities
             var errors = new List<string>();
             foreach (PatchFile file in files.Where(f => f.IsModified))
             {
-                string temporaryPath = file.FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-                try
+                string content = file.Content;
+                byte[] bytes;
+                string error;
+                if (TextFileStorage.TryWrite(file.FilePath, content, file.Encoding, file.OriginalBytes, out bytes, out error))
                 {
-                    // Refuse to overwrite edits made by the emulator or an external editor since loading.
-                    if (!File.ReadAllBytes(file.FilePath).SequenceEqual(file.OriginalBytes))
-                        throw new IOException("The file changed on disk. Reload patches before saving.");
-
-                    string content = file.Content;
-                    byte[] bytes = file.Encoding.GetPreamble().Concat(file.Encoding.GetBytes(content)).ToArray();
-                    File.WriteAllBytes(temporaryPath, bytes);
-                    File.Replace(temporaryPath, file.FilePath, null);
                     file.OriginalBytes = bytes;
                     file.OriginalContent = content;
                 }
-                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-                {
-                    errors.Add(Path.GetFileName(file.FilePath) + ": " + ex.Message);
-                }
-                finally
-                {
-                    try
-                    {
-                        if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-                    }
-                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-                    {
-                        errors.Add(Path.GetFileName(temporaryPath) + ": " + ex.Message);
-                    }
-                }
+                else errors.Add(Path.GetFileName(file.FilePath) + ": " + error);
             }
             return errors;
         }

@@ -68,7 +68,7 @@ The build copies sample files from `XeniaSettings/TestData` into the output fold
 
 ## Regression checks
 
-The test runner uses .NET Framework and requires no additional test packages:
+The test runner references the built application and requires no additional test packages. Both projects are included in the solution:
 
 ```powershell
 msbuild Tests/XeniaSettings.Tests.csproj /t:Build /p:Configuration=Release /p:Platform=AnyCPU

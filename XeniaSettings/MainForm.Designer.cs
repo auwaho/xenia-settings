@@ -1,4 +1,4 @@
-﻿namespace XeniaSettings
+namespace XeniaSettings
 {
     partial class MainForm
     {
@@ -50,7 +50,6 @@
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.valueTextBox = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
-            this.setValueButton = new System.Windows.Forms.Button();
             this.configDescRichTextBox = new System.Windows.Forms.RichTextBox();
             this.tabPage2 = new System.Windows.Forms.TabPage();
             this.splitContainer3 = new System.Windows.Forms.SplitContainer();
@@ -280,7 +279,6 @@
             // 
             this.splitContainer2.Panel1.Controls.Add(this.valueTextBox);
             this.splitContainer2.Panel1.Controls.Add(this.label1);
-            this.splitContainer2.Panel1.Controls.Add(this.setValueButton);
             // 
             // splitContainer2.Panel2
             // 
@@ -308,18 +306,6 @@
             this.label1.Size = new System.Drawing.Size(81, 15);
             this.label1.TabIndex = 1;
             this.label1.Text = "Current value:";
-            // 
-            // setValueButton
-            // 
-            this.setValueButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.setValueButton.Location = new System.Drawing.Point(350, 3);
-            this.setValueButton.Name = "setValueButton";
-            this.setValueButton.Size = new System.Drawing.Size(91, 23);
-            this.setValueButton.TabIndex = 0;
-            this.setValueButton.Text = "Set value";
-            this.setValueButton.UseVisualStyleBackColor = true;
-            this.setValueButton.Visible = false;
-            this.setValueButton.Click += new System.EventHandler(this.setValueButton_Click);
             // 
             // configDescRichTextBox
             // 
@@ -496,7 +482,6 @@
         private System.Windows.Forms.SplitContainer splitContainer2;
         private System.Windows.Forms.TextBox valueTextBox;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Button setValueButton;
         private System.Windows.Forms.SplitContainer splitContainer3;
         private System.Windows.Forms.SplitContainer splitContainer4;
         private System.Windows.Forms.Label label2;

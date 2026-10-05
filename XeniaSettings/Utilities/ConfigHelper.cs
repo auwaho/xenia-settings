@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using XeniaSettings.Models;
 
@@ -19,21 +17,15 @@ namespace XeniaSettings.Utilities
             error = null;
             try
             {
-                byte[] bytes = File.ReadAllBytes(path);
-                string content;
-                Encoding encoding;
-                using (var reader = new StreamReader(new MemoryStream(bytes), new UTF8Encoding(false, true), true))
-                {
-                    content = reader.ReadToEnd();
-                    encoding = reader.CurrentEncoding;
-                }
+                TextFileData data = TextFileStorage.Read(path);
+
                 config = new ConfigFile
                 {
                     FilePath = path,
-                    Encoding = encoding,
-                    OriginalBytes = bytes,
-                    OriginalContent = content,
-                    Sections = ParseSections(content)
+                    Encoding = data.Encoding,
+                    OriginalBytes = data.Bytes,
+                    OriginalContent = data.Content,
+                    Sections = ParseSections(data.Content)
                 };
                 return true;
             }
@@ -174,36 +166,13 @@ namespace XeniaSettings.Utilities
         {
             error = null;
             if (!config.IsModified) return true;
-            string temporaryPath = config.FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            bool saved = false;
-            try
-            {
-                if (!File.ReadAllBytes(config.FilePath).SequenceEqual(config.OriginalBytes))
-                    throw new IOException("The config file changed on disk. Reload config before saving.");
+            string content = config.Content;
+            byte[] bytes;
+            if (!TextFileStorage.TryWrite(config.FilePath, content, config.Encoding, config.OriginalBytes, out bytes, out error))
+                return false;
 
-                string content = config.Content;
-                byte[] bytes = config.Encoding.GetPreamble().Concat(config.Encoding.GetBytes(content)).ToArray();
-                File.WriteAllBytes(temporaryPath, bytes);
-                File.Replace(temporaryPath, config.FilePath, null);
-                config.AcceptChanges(content, bytes);
-                saved = true;
-            }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-            {
-                error = ex.Message;
-            }
-            finally
-            {
-                try
-                {
-                    if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-                }
-                catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
-                {
-                    error += "\nCould not remove temporary file: " + ex.Message;
-                }
-            }
-            return saved;
+            config.AcceptChanges(content, bytes);
+            return true;
         }
     }
 }

@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
@@ -12,7 +11,6 @@ namespace XeniaSettings
 {
     public partial class MainForm : Form
     {
-        private List<SettingsSection> _settings = new List<SettingsSection>();
         private ConfigFile _config;
         private bool _loadingConfigValue;
         private List<PatchFile> _patchFiles = new List<PatchFile>();
@@ -29,7 +27,7 @@ namespace XeniaSettings
         private void ReloadSettingsTreeView()
         {
             configTreeView.Nodes.Clear();
-            foreach (SettingsSection section in _settings)
+            foreach (SettingsSection section in _config.Sections)
             {
                 var sectionNode = new TreeNode(section.SectionName) { Tag = section };
                 configTreeView.Nodes.Add(sectionNode);
@@ -48,50 +46,18 @@ namespace XeniaSettings
 
         private void configSearchTextBox_TextChanged(object sender, EventArgs e)
         {
-            configTreeView.CollapseAll();
-
-            string inputText = configSearchTextBox.Text;
-
-            if (inputText.Length >= 2)
+            string search = configSearchTextBox.Text;
+            TreeNode match = null;
+            if (search.Length >= 2 && _config != null)
             {
-                var setting = _settings.SelectMany(s => s.Settings).FirstOrDefault(s => s.Name.Equals(inputText, StringComparison.OrdinalIgnoreCase)) ??
-                    _settings.SelectMany(s => s.Settings).FirstOrDefault(s => s.Name.IndexOf(inputText, StringComparison.OrdinalIgnoreCase) >= 0) ??
-                    _settings.SelectMany(s => s.Settings).FirstOrDefault(s => s.Description != null && s.Description.IndexOf(inputText, StringComparison.OrdinalIgnoreCase) >= 0);
-
-                if (setting != null)
-                {
-                    TreeViewHelper.HighlightNodes(configTreeView.Nodes, inputText);
-
-                    var node = configTreeView.Nodes.Cast<TreeNode>().SelectMany(n => n.Nodes.Cast<TreeNode>())
-                        .FirstOrDefault(n => ReferenceEquals(n.Tag, setting));
-                    if (node != null)
-                    {
-                        configTreeView.SelectedNode = node;
-                        //treeView1.SelectedNode.EnsureVisible();
-                        configTreeView.SelectedNode.BackColor = Color.PaleGoldenrod;
-
-                        int startIndex = configDescRichTextBox.Text.IndexOf(inputText, StringComparison.OrdinalIgnoreCase);
-                        if (startIndex != -1)
-                        {
-                            configDescRichTextBox.Select(startIndex, inputText.Length);
-                            configDescRichTextBox.SelectionBackColor = Color.PaleGoldenrod;
-                        }
-                    }
-                }
-                else
-                {
-                    TreeViewHelper.ResetNodeHighlights(configTreeView.Nodes);
-                }
+                var settings = _config.Sections.SelectMany(s => s.Settings).ToList();
+                Setting setting = settings.FirstOrDefault(s => s.Name.Equals(search, StringComparison.OrdinalIgnoreCase))
+                    ?? settings.FirstOrDefault(s => s.Name.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+                    ?? settings.FirstOrDefault(s => s.Description.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
+                match = configTreeView.Nodes.Cast<TreeNode>().SelectMany(n => n.Nodes.Cast<TreeNode>())
+                    .FirstOrDefault(n => ReferenceEquals(n.Tag, setting));
             }
-            else
-            {
-                TreeViewHelper.ResetNodeHighlights(configTreeView.Nodes);
-            }
-        }
-
-        private void setValueButton_Click(object sender, EventArgs e)
-        {
-            UpdateSelectedConfigValue();
+            TreeViewHelper.ApplySearch(configTreeView, configDescRichTextBox, search, match, ShowSelectedConfigSetting);
         }
 
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
@@ -124,7 +90,6 @@ namespace XeniaSettings
             configSearchTextBox.Text = string.Empty;
             valueTextBox.Text = string.Empty;
             _config = loaded;
-            _settings = loaded.Sections;
             SetConfigControlsEnabled(true);
             ReloadSettingsTreeView();
         }
@@ -134,7 +99,6 @@ namespace XeniaSettings
             configTreeView.Enabled = enabled;
             configSearchTextBox.Enabled = enabled;
             valueTextBox.Enabled = enabled;
-            setValueButton.Enabled = enabled;
             saveConfigToolStripMenuItem.Enabled = enabled;
         }
 
@@ -152,8 +116,13 @@ namespace XeniaSettings
 
         private void configTreeView_AfterSelect(object sender, TreeViewEventArgs e)
         {
+            ShowSelectedConfigSetting();
+        }
+
+        private void ShowSelectedConfigSetting()
+        {
             if (tabControl1.SelectedTab != tabPage1 || _config == null) return;
-            var setting = e.Node?.Tag as Setting;
+            var setting = configTreeView.SelectedNode?.Tag as Setting;
             configDescRichTextBox.Text = setting?.Description;
             _loadingConfigValue = true;
             try { valueTextBox.Text = setting?.Value ?? string.Empty; }
@@ -169,7 +138,7 @@ namespace XeniaSettings
             }
             else
             {
-                configTreeView_AfterSelect(configTreeView, new TreeViewEventArgs(configTreeView.SelectedNode));
+                ShowSelectedConfigSetting();
                 configSearchTextBox.Select();
             }
         }
@@ -248,32 +217,17 @@ namespace XeniaSettings
         {
             if (_loadingPatches) return;
             string search = patchesSearchTextBox.Text;
-            patchesTreeView.CollapseAll();
-            TreeViewHelper.ResetNodeHighlights(patchesTreeView.Nodes);
-            if (search.Length < 2) return;
-
-            var nodes = patchesTreeView.Nodes.Cast<TreeNode>()
-                .SelectMany(game => new[] { game }.Concat(game.Nodes.Cast<TreeNode>())).ToList();
-            TreeNode match = nodes.FirstOrDefault(n => n.Text.Equals(search, StringComparison.OrdinalIgnoreCase))
-                ?? nodes.FirstOrDefault(n => n.Text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
-                ?? nodes.FirstOrDefault(n => ((n.Tag as PatchFile)?.Description ?? (n.Tag as Patch)?.Description ?? string.Empty)
-                    .IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
-            TreeViewHelper.HighlightNodes(patchesTreeView.Nodes, search);
-            if (match == null) return;
-
-            patchesTreeView.SelectedNode = match;
-            match.EnsureVisible();
-            match.BackColor = Color.PaleGoldenrod;
-            if (tabControl1.SelectedTab == tabPage2)
+            TreeNode match = null;
+            if (search.Length >= 2)
             {
-                ShowPatchDescription();
-                int start = patchDescRichTextBox.Text.IndexOf(search, StringComparison.OrdinalIgnoreCase);
-                if (start >= 0)
-                {
-                    patchDescRichTextBox.Select(start, search.Length);
-                    patchDescRichTextBox.SelectionBackColor = Color.PaleGoldenrod;
-                }
+                var nodes = patchesTreeView.Nodes.Cast<TreeNode>()
+                    .SelectMany(game => new[] { game }.Concat(game.Nodes.Cast<TreeNode>())).ToList();
+                match = nodes.FirstOrDefault(n => n.Text.Equals(search, StringComparison.OrdinalIgnoreCase))
+                    ?? nodes.FirstOrDefault(n => n.Text.IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0)
+                    ?? nodes.FirstOrDefault(n => ((n.Tag as PatchFile)?.Description ?? (n.Tag as Patch)?.Description ?? string.Empty)
+                        .IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0);
             }
+            TreeViewHelper.ApplySearch(patchesTreeView, patchDescRichTextBox, search, match, ShowPatchDescription);
         }
 
         private void valueTextBox_TextChanged(object sender, EventArgs e)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
@@ -66,22 +66,36 @@ namespace XeniaSettings.Utilities
             }
         }
 
-        public static TreeNode FindNodeByText(TreeNodeCollection nodes, string nodeText)
+        public static void ApplySearch(TreeView tree, RichTextBox description, string searchText,
+            TreeNode match, Action showSelection)
         {
-            foreach (TreeNode node in nodes)
+            tree.CollapseAll();
+            ResetNodeHighlights(tree.Nodes);
+            if (searchText.Length >= 2)
             {
-                if (node.Text == nodeText)
-                    return node;
-
-                if (node.Nodes.Count > 0)
+                HighlightNodes(tree.Nodes, searchText);
+                if (match != null)
                 {
-                    TreeNode childNode = FindNodeByText(node.Nodes, nodeText);
-                    if (childNode != null)
-                        return childNode;
+                    tree.SelectedNode = match;
+                    match.EnsureVisible();
+                    match.BackColor = Color.PaleGoldenrod;
                 }
             }
 
-            return null;
+            showSelection();
+            int selectionStart = description.SelectionStart;
+            int selectionLength = description.SelectionLength;
+            description.SelectAll();
+            description.SelectionBackColor = description.BackColor;
+            description.Select(selectionStart, selectionLength);
+            if (searchText.Length < 2 || match == null) return;
+
+            int start = description.Text.IndexOf(searchText, StringComparison.OrdinalIgnoreCase);
+            if (start >= 0)
+            {
+                description.Select(start, searchText.Length);
+                description.SelectionBackColor = Color.PaleGoldenrod;
+            }
         }
     }
 }

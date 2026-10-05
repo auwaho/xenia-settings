@@ -6,6 +6,7 @@
     <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
     <OutputType>Exe</OutputType>
     <RootNamespace>XeniaSettings</RootNamespace>
+    <ProjectGuid>{5C0A7D88-EB72-4E4C-BF68-5824474D448F}</ProjectGuid>
     <AssemblyName>XeniaSettings.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <OutputPath>bin\$(Configuration)\</OutputPath>
@@ -20,18 +21,10 @@
     <Reference Include="System.Windows.Forms" />
     <Compile Include="RegressionTests.cs" />
     <Compile Include="ConfigRegressionTests.cs" />
-    <Compile Include="..\XeniaSettings\Models\*.cs" />
-    <Compile Include="..\XeniaSettings\Utilities\*.cs" />
-    <Compile Include="..\XeniaSettings\MainForm.cs" />
-    <Compile Include="..\XeniaSettings\MainForm.Designer.cs" />
-    <EmbeddedResource Include="..\XeniaSettings\MainForm.resx">
-      <Link>MainForm.resx</Link>
-      <ManifestResourceName>XeniaSettings.MainForm</ManifestResourceName>
-    </EmbeddedResource>
+    <Compile Include="RefactoringRegressionTests.cs" />
     <ProjectReference Include="..\XeniaSettings\XeniaSettings.csproj">
       <Project>{61D9D6EF-71BE-4BBC-B39F-296C1B93B8B0}</Project>
       <Name>XeniaSettings</Name>
-      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
