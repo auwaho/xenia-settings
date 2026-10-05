@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" />
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)' == ''">Debug</Configuration>
+    <Platform Condition="'$(Platform)' == ''">AnyCPU</Platform>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>XeniaSettings</RootNamespace>
+    <AssemblyName>XeniaSettings.Tests</AssemblyName>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <OutputPath Condition="'$(Platform)' == 'x64'">bin\x64\$(Configuration)\</OutputPath>
+    <PlatformTarget Condition="'$(Platform)' == 'x64'">x64</PlatformTarget>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Compile Include="RegressionTests.cs" />
+    <Compile Include="ConfigRegressionTests.cs" />
+    <Compile Include="..\XeniaSettings\Models\*.cs" />
+    <Compile Include="..\XeniaSettings\Utilities\*.cs" />
+    <Compile Include="..\XeniaSettings\MainForm.cs" />
+    <Compile Include="..\XeniaSettings\MainForm.Designer.cs" />
+    <EmbeddedResource Include="..\XeniaSettings\MainForm.resx">
+      <Link>MainForm.resx</Link>
+      <ManifestResourceName>XeniaSettings.MainForm</ManifestResourceName>
+    </EmbeddedResource>
+    <ProjectReference Include="..\XeniaSettings\XeniaSettings.csproj">
+      <Project>{61D9D6EF-71BE-4BBC-B39F-296C1B93B8B0}</Project>
+      <Name>XeniaSettings</Name>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Target Name="CopyFixtures" AfterTargets="Build">
+    <ItemGroup><Fixture Include="..\XeniaSettings\TestData\**\*.*" /></ItemGroup>
+    <Copy SourceFiles="@(Fixture)" DestinationFiles="@(Fixture->'$(OutputPath)%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+</Project>

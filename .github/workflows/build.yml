@@ -1,0 +1,40 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - configuration: Release
+            platform: AnyCPU
+            test-exe: Tests/bin/Release/XeniaSettings.Tests.exe
+          - configuration: Debug
+            platform: x64
+            test-exe: Tests/bin/x64/Debug/XeniaSettings.Tests.exe
+    name: ${{ matrix.configuration }} / ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: microsoft/setup-msbuild@v3
+      - name: Build application and regression checks
+        shell: pwsh
+        run: |
+          msbuild Tests/XeniaSettings.Tests.csproj /t:Build /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }} /nologo /verbosity:minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run regression checks
+        shell: pwsh
+        run: |
+          & './${{ matrix.test-exe }}'
+          exit $LASTEXITCODE
